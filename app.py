@@ -78,12 +78,13 @@ class OpenAIModel:
         self.conversation_history = []
         self.chatbot_name = "Alfred"
 
-    def chat(self, user_message, system_prompt=None):
+    def chat(self, user_message, system_prompt=None, temperature=0.5, max_tokens=1024):
         self.conversation_history.append({
             "role": "user",
             "content": f"{user_message}"
         })
 
+        # leaving out temperature and max_tokens as they are not supported by gpt-5 models
         response = self.client.responses.create(
             model=self.model_name,
             input=self.conversation_history,

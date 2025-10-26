@@ -1,46 +1,43 @@
 import streamlit as st
-from openai import api_key
 
-from app import LLMApp
-
+from app import llm_factory
 
 # page configuration (app meta data)
 st.set_page_config(
     page_title="Streamlit App",
-    page_icon="",
+    page_icon="🤖",
     layout="centered",
 )
-
 
 # initialise session state
 if "messages" not in st.session_state:
     st.session_state["messages"] = []
 
-if "llm_app" not in st.session_state:
-    st.session_state["llm_app"] = None
-
 
 # Title and description
 st.title("Streamlit App")
-st.markdown("Chat with a powerful LLM from Groq")
+st.markdown("Chat with a powerful LLM from Either Groq or OpenAI")
 
 # Implement sidebar for configuration
 with st.sidebar:
     st.header("Configuration")
 
     # API key input
-    api_key = st.sidebar.text_input("Groq API Key", type="password", help="Enter your Groq API Key")
-    # if not api_key:
-    #     api_key = LLMApp().api_key
+    api_key = st.sidebar.text_input("Enter your API Key (Optional)",
+                                    type="password",
+                                    help="Enter your Groq or OpenAI API key, depending on the model you wish to use")
 
     # model selection
     model = st.selectbox(
-        "Model",
+        "LLM Model",
         [
-            "llama-3.1-8b-instant",
             "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+            "gpt-5",
+            "gpt-5-mini",
+            "gpt-5-nano",
         ],
-        help="Select the model to use"
+        help="Select the model to use",
     )
 
     temperature = st.slider(
@@ -63,61 +60,53 @@ with st.sidebar:
     system_prompt = st.text_area(
         "System prompt (Optional)",
         placeholder="You are a helpful assistant...",
-        help="Set context and behaviou of the assistant"
+        help="Set context and behaviour of the assistant"
     )
 
     # clear chat button
     if st.button("Clear Chat History", use_container_width=True):
         st.session_state.messages = []
-        # if st.session_state.llm_app:
-        #     st.session_state.llm_app.clear_history()
-
         st.rerun()
 
-if st.session_state.llm_app is None:
-    try:
-        st.session_state.llm_app = LLMApp(api_key, model=model)
-    except Exception as e:
-        st.error(f"Error: {str(e)}")
-
-
+# Main App section
 # display chat messages
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Chat input
+# Accept user input
 if prompt := st.chat_input("Type your message here..."):
-    if not api_key or not LLMApp().api_key:
-        st.warning("API Key not set")
-    else:
-        st.session_state.messages.append(
-            {
-                "content": f"{prompt}",
-                "role": "user",
-            }
-        )
+    # Display user message in chat message container and add to chat history
+    with st.chat_message("user"):
+        st.markdown(prompt)
+    st.session_state["messages"].append({"role": "user", "content": prompt})
 
-        with st.chat_message("user"):
-            st.markdown(prompt)
+    # Display assistant response in chat message container and add to chat history
+    with st.chat_message("assistant"):
+        with st.spinner("Thinking..."):
+            try:
+                # get the right LLM API class based on selected model
+                llm_client_params = {"model_name": model}
+                if api_key:
+                    llm_client_params["api_key"] = api_key
 
-        # get assistant response
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                try:
-                    response = st.session_state.llm_app.chat(
-                        user_message=prompt,
-                        system_prompt=system_prompt if system_prompt else None,
-                        temperature=temperature,
-                        max_tokens=max_tokens,
-                    )
+                llm_client = llm_factory(**llm_client_params)
 
-                    st.markdown(response)
-                    st.session_state.messages.append(
-                        {
-                            "content": f"{response}",
-                            "role": "assistant",
-                        }
-                    )
-                except Exception as e:
-                    st.error(f"Error: {str(e)}")
+                # post a message to the LLM API
+                llm_chat_params = {
+                    "user_message": st.session_state["messages"],
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                }
+                if system_prompt:
+                    llm_chat_params["system_prompt"] = system_prompt
+
+                response = llm_client.chat(**llm_chat_params)
+
+                # print response
+                st.markdown(response)
+
+                # add response to chat history
+                st.session_state["messages"].append({"role": "assistant", "content": response})
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
