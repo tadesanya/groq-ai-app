@@ -89,32 +89,35 @@ class VoiceGenerator:
         self.client = ElevenLabs(api_key=api_key)
         # Default available voices
         self.available_voices = [
-            "Rachel",
-            "Domi",
-            "Bella",
-            "Antoni",
-            "Elli",
-            "Josh",
-            "Arnold",
-            "Adam",
-            "Sam",
+            "Clyde",
+            "Roger",
+            "Sarah",
+            "Laura",
+            "Charlie",
+            "George",
         ]
-        self.default_voice = "Rachel"
+        self.default_voice = "Clyde"
+        self.available_voice_ids = {
+            "Clyde": "2EiwWnXFnvU5JabPnv8n",
+            "Roger": "CwhRBWXzGAHq8TQ4Fs17",
+            "Sarah": "EXAVITQu4vr4xnSDxMaL",
+            "Laura": "FGY2WhTYpPnrIDTdsKH5",
+            "Charlie": "IKne3meq5aSn9XLyUdCD",
+            "George": "JBFqnCBsd6RMkjVDRZzb",
+        }
 
     def generate_voice_response(self, text: str, voice_name: str = None) -> str:
         """Generate voice response"""
         try:
             selected_voice = voice_name or self.default_voice
+            selected_voice_id = self.available_voice_ids[selected_voice]
 
             # Generate audio using the client
             audio_generator = self.client.text_to_speech.convert(
                 text=text,
-                voice_name=selected_voice,
+                voice_id=selected_voice_id,
                 model_id="eleven_multilingual_v2"
             )
-            # audio_generator = self.client.generate(
-            #     text=text, voice=selected_voice, model="eleven_multilingual_v2"
-            # )
 
             # Convert generator to bytes
             audio_bytes = b"".join(audio_generator)
